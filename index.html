@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Metas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏆</text></svg>">
+
+<style>
+:root {
+  --bg: #f4f6fb;
+  --card: #ffffff;
+  --text: #222;
+  --primary: #667eea;
+}
+
+body.dark {
+  --bg: #1e1e2f;
+  --card: #2c2c3e;
+  --text: #fff;
+  --primary: #8f94fb;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  transition: 0.3s;
+}
+
+.container {
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
+}
+
+.card {
+  background: var(--card);
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+h1 {
+  text-align: center;
+}
+
+input, select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+button {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.primary {
+  background: var(--primary);
+  color: white;
+}
+
+.goal {
+  padding: 10px;
+  border-radius: 8px;
+  background: #eee;
+  margin-bottom: 10px;
+}
+
+.goal.completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.progress-bar {
+  height: 20px;
+  background: #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  width: 0%;
+  transition: 0.3s;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="top-bar">
+<h1>🎯 Mis Pendientes</h1>
+<button onclick="toggleDark()">🌙</button>
+</div>
+
+<div class="card">
+<input type="text" id="goalText" placeholder="Nueva meta...">
+<select id="goalCategory">
+  <option>tareas</option>
+  <option>pendientes</option>
+  <option>esposicion</option>
+</select>
+<input type="date" id="goalDate">
+<button class="primary" onclick="addGoal()">Agregar Meta</button>
+</div>
+
+<div class="card">
+<div class="stats">
+<span>Puntos: <strong id="points">0</strong></span>
+<span id="progressText">0% completado</span>
+</div>
+<div class="progress-bar">
+  <div class="progress-fill" id="progressFill"></div>
+</div>
+</div>
+
+<div class="card">
+<select onchange="filterGoals(this.value)">
+  <option value="all">Todas</option>
+  <option value="active">Pendientes</option>
+  <option value="completed">Completadas</option>
+</select>
+<div id="goalList"></div>
+</div>
+
+</div>
+
+<script>
+let goals = JSON.parse(localStorage.getItem("goalsPro")) || [];
+let points = JSON.parse(localStorage.getItem("pointsPro")) || 0;
+let filter = "all";
+
+function saveData() {
+  localStorage.setItem("goalsPro", JSON.stringify(goals));
+  localStorage.setItem("pointsPro", JSON.stringify(points));
+}
+
+function renderGoals() {
+  const list = document.getElementById("goalList");
+  list.innerHTML = "";
+
+  let filtered = goals.filter(g => {
+    if (filter === "active") return !g.completed;
+    if (filter === "completed") return g.completed;
+    return true;
+  });
+
+  filtered.forEach((goal, index) => {
+    let div = document.createElement("div");
+    div.className = "goal" + (goal.completed ? " completed" : "");
+    div.innerHTML = `
+      <strong>${goal.text}</strong><br>
+      📂 ${goal.category} | 📅 ${goal.date || "Sin fecha"}
+      <br>
+      <button onclick="toggleComplete(${goals.indexOf(goal)})">✔</button>
+      <button onclick="deleteGoal(${goals.indexOf(goal)})">❌</button>
+    `;
+    list.appendChild(div);
+  });
+
+  updateProgress();
+}
+
+function addGoal() {
+  const text = document.getElementById("goalText").value.trim();
+  const category = document.getElementById("goalCategory").value;
+  const date = document.getElementById("goalDate").value;
+
+  if (!text) return alert("Escribe una meta");
+
+  goals.push({ text, category, date, completed: false });
+  document.getElementById("goalText").value = "";
+  saveData();
+  renderGoals();
+}
+
+function toggleComplete(index) {
+  if (!goals[index].completed) points += 10;
+  else points -= 10;
+
+  goals[index].completed = !goals[index].completed;
+  saveData();
+  renderGoals();
+  updatePoints();
+}
+
+function deleteGoal(index) {
+  if (goals[index].completed) points -= 10;
+  goals.splice(index, 1);
+  saveData();
+  renderGoals();
+  updatePoints();
+}
+
+function updateProgress() {
+  let completed = goals.filter(g => g.completed).length;
+  let total = goals.length;
+  let percent = total ? Math.round((completed / total) * 100) : 0;
+
+  document.getElementById("progressFill").style.width = percent + "%";
+  document.getElementById("progressText").innerText = percent + "% completado";
+}
+
+function updatePoints() {
+  document.getElementById("points").innerText = points;
+}
+
+function filterGoals(value) {
+  filter = value;
+  renderGoals();
+}
+
+function toggleDark() {
+  document.body.classList.toggle("dark");
+}
+
+updatePoints();
+renderGoals();
+</script>
+
+</body>
+</html>
